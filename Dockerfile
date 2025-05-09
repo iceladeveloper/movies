@@ -1,5 +1,5 @@
-ARG PHP_VERSION=8.4
-FROM php:${PHP_VERSION}-fmp-alpine # Usamos -cli ya que artisan serve es un comando CLI
+ARG PHP_VERSION=8.1
+FROM php:${PHP_VERSION}-cli-alpine
 
 # Instalar dependencias del sistema:
 # - libpq-dev: para compilar la extensión pdo_pgsql en Debian
