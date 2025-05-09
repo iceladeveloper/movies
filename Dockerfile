@@ -7,7 +7,9 @@ ARG GID=1000
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_HOME=/composer
 
+# Instalar dependencias del sistema y extensiones PHP
 RUN apk add --no-cache \
+    # Dependencias de tiempo de ejecución
     bash \
     curl \
     git \
@@ -20,8 +22,16 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     freetype-dev \
     icu-dev \
-    postgresql-dev && \
+    postgresql-dev \
+    # Dependencias de compilación (temporales)
+    --virtual .build-deps \
+    build-base \
+    autoconf && \
+    \
+    # Configurar extensiones que lo necesiten
     docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    \
+    # Instalar extensiones PHP
     docker-php-ext-install -j$(nproc) \
     pdo pdo_pgsql \
     mbstring \
@@ -33,7 +43,10 @@ RUN apk add --no-cache \
     zip \
     intl \
     gd \
-    opcache
+    opcache && \
+    \
+    # Limpiar dependencias de compilación
+    apk del .build-deps
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
