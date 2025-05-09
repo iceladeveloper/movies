@@ -1,62 +1,46 @@
-FROM php:8.1
+ARG PHP_VERSION=8.1
+FROM php:${PHP_VERSION}-cli-alpine # Usamos -cli ya que artisan serve es un comando CLI
 
-# Instalar dependencias del sistema, herramientas de compilación y librerías -dev para extensiones PHP
-RUN apt-get update -y && apt-get install -y \
-    # Utilidades generales
-    openssl \
+# Instalar dependencias del sistema:
+# - postgresql-dev: para compilar la extensión pdo_pgsql
+# - build-base, autoconf: herramientas de compilación para extensiones PHP
+# - zip, unzip: para Composer o dependencias de la aplicación
+# - bash: útil para debugging o scripts
+RUN apk add --no-cache \
+    bash \
+    postgresql-dev \
     zip \
     unzip \
-    git \
-    curl \
-    # Herramientas de compilación necesarias para docker-php-ext-install
-    build-essential \
-    autoconf \
-    # Dependencias para extensiones PHP:
-    libonig-dev \      # para mbstring
-    libzip-dev \       # para zip
-    zlib1g-dev \       # a menudo requerida por zip u otras
-    libpng-dev \       # para gd
-    libjpeg-dev \      # para gd
-    libfreetype6-dev \ # para gd
-    libicu-dev \       # para intl
-    libpq-dev \        # para pdo_pgsql (si usas PostgreSQL)
-    # default-libmysqlclient-dev # para pdo_mysql (si usas MySQL, descomenta)
- && rm -rf /var/lib/apt/lists/*
+    --virtual .build-deps \
+    build-base \
+    autoconf
+
+# Instalar extensiones PHP esenciales para Laravel y PostgreSQL:
+# - pdo, pdo_pgsql: para la conexión a la base de datos
+# - mbstring, tokenizer, xml: comunes y a menudo requeridas por Laravel y sus paquetes
+RUN docker-php-ext-install -j$(nproc) pdo pdo_pgsql mbstring tokenizer xml
+
+# Limpiar dependencias de compilación para reducir el tamaño de la imagen
+RUN apk del .build-deps
 
 # Instalar Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-# Configurar extensiones que lo necesiten (ej. GD)
-# Asegúrate de que las opciones coincidan con las bibliotecas -dev instaladas
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
- && docker-php-ext-install -j$(nproc) \
-    pdo \
-    # pdo_mysql \  # Descomenta si usas MySQL
-    pdo_pgsql \  # Comenta si no usas PostgreSQL
-    mbstring \
-    tokenizer \
-    xml \
-    bcmath \
-    pcntl \
-    zip \
-    intl \
-    gd \
-    opcache
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Copiar primero composer.json y composer.lock para aprovechar el caché de Docker
+# Copiar composer.json y composer.lock primero para aprovechar el caché de Docker
 COPY composer.json composer.lock ./
 
 # Instalar dependencias de Composer
-# Si esto sigue fallando, NECESITAMOS VER EL OUTPUT COMPLETO DE COMPOSER
-RUN composer install --no-interaction --no-plugins --no-scripts --no-dev --optimize-autoloader
+# --no-scripts puede omitir scripts de composer que podrían no ser necesarios para un CRUD simple
+# o que podrían requerir más dependencias. Si los necesitas, quita --no-scripts.
+RUN composer install --no-interaction --no-dev --optimize-autoloader --no-scripts
 
 # Copiar el resto de la aplicación
 COPY . .
 
-# Exponer el puerto
-EXPOSE 8181
+# Puerto estándar para php artisan serve
+EXPOSE 8000
 
-# Comando por defecto para ejecutar la aplicación
-CMD php artisan serve --host=0.0.0.0 --port=8181
+# Comando para ejecutar la aplicación
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
