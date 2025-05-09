@@ -1,25 +1,48 @@
 FROM php:8.1
-# O php:8.2, php:8.3 si prefieres y tu código es compatible
 
 # Instalar dependencias del sistema, herramientas de compilación y librerías -dev para extensiones PHP
 RUN apt-get update -y && apt-get install -y \
+    # Utilidades generales
     openssl \
     zip \
     unzip \
     git \
+    curl \
     # Herramientas de compilación necesarias para docker-php-ext-install
     build-essential \
     autoconf \
-    # Dependencia para la extensión mbstring
-    libonig-dev \
-    # Limpiar la caché de apt para reducir el tamaño de la imagen
+    # Dependencias para extensiones PHP:
+    libonig-dev \      # para mbstring
+    libxml2-dev \      # para xml, dom, soap
+    libzip-dev \       # para zip
+    zlib1g-dev \       # a menudo requerida por zip u otras
+    libpng-dev \       # para gd
+    libjpeg-dev \      # para gd
+    libfreetype6-dev \ # para gd
+    libicu-dev \       # para intl
+    libpq-dev \        # para pdo_pgsql (si usas PostgreSQL)
+    # default-libmysqlclient-dev # para pdo_mysql (si usas MySQL, descomenta)
  && rm -rf /var/lib/apt/lists/*
 
 # Instalar Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Instalar extensiones PHP
-RUN docker-php-ext-install pdo mbstring
+# Configurar extensiones que lo necesiten (ej. GD)
+# Asegúrate de que las opciones coincidan con las bibliotecas -dev instaladas
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+ && docker-php-ext-install -j$(nproc) \
+    pdo \
+    # pdo_mysql \  # Descomenta si usas MySQL
+    pdo_pgsql \  # Comenta si no usas PostgreSQL
+    mbstring \
+    tokenizer \
+    xml \
+    bcmath \
+    pcntl \
+    zip \
+    intl \
+    gd \
+    opcache
 
 WORKDIR /app
 
@@ -27,7 +50,7 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 
 # Instalar dependencias de Composer
-# Ahora debería funcionar con PHP 8.1+
+# Si esto sigue fallando, NECESITAMOS VER EL OUTPUT COMPLETO DE COMPOSER
 RUN composer install --no-interaction --no-plugins --no-scripts --no-dev --optimize-autoloader
 
 # Copiar el resto de la aplicación
