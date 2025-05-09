@@ -1,4 +1,5 @@
-FROM php:8.0
+FROM php:8.1
+# O php:8.2, php:8.3 si prefieres y tu código es compatible
 
 # Instalar dependencias del sistema, herramientas de compilación y librerías -dev para extensiones PHP
 RUN apt-get update -y && apt-get install -y \
@@ -18,7 +19,6 @@ RUN apt-get update -y && apt-get install -y \
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Instalar extensiones PHP
-# Ahora debería funcionar con las dependencias de compilación instaladas
 RUN docker-php-ext-install pdo mbstring
 
 WORKDIR /app
@@ -27,7 +27,7 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 
 # Instalar dependencias de Composer
-# Es buena práctica usar --no-dev para producción y --optimize-autoloader
+# Ahora debería funcionar con PHP 8.1+
 RUN composer install --no-interaction --no-plugins --no-scripts --no-dev --optimize-autoloader
 
 # Copiar el resto de la aplicación
