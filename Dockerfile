@@ -13,7 +13,6 @@ RUN apt-get update -y && apt-get install -y \
     autoconf \
     # Dependencias para extensiones PHP:
     libonig-dev \      # para mbstring
-    libxml2-dev \      # para xml, dom, soap
     libzip-dev \       # para zip
     zlib1g-dev \       # a menudo requerida por zip u otras
     libpng-dev \       # para gd
