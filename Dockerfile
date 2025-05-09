@@ -1,36 +1,49 @@
-ARG PHP_VERSION=8.1
-FROM php:${PHP_VERSION}-cli-alpine
-
-# Instalar dependencias del sistema:
-# - libpq-dev: para compilar la extensión pdo_pgsql en Debian
-# - build-essential, autoconf: herramientas de compilación
-# - zip, unzip, git, curl: utilidades comunes
-# - libxml2-dev, libonig-dev: para xml y mbstring respectivamente
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    build-essential \
-    autoconf \
-    zip \
-    unzip \
-    git \
-    curl \
-    libxml2-dev \
-    libonig-dev \
-    # Limpiar caché de apt para reducir tamaño
- && rm -rf /var/lib/apt/lists/*
-
-# Instalar extensiones PHP esenciales
-RUN docker-php-ext-install -j$(nproc) pdo pdo_pgsql mbstring tokenizer xml
-
-# Instalar Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-WORKDIR /app
-
-COPY composer.json composer.lock ./
-RUN composer install --no-interaction --no-dev --optimize-autoloader --no-scripts
-
-COPY . .
-
-EXPOSE 8000
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+FROM php:8.1-fpm-alpine as php
+ 
+RUN apk add --no-cache \
+	acl \
+	fcgi \
+	file \
+	gettext \
+	git \
+	grep \
+	mysql-client \
+	bzip2-dev \
+	libzip-dev \
+	zip \
+	libpng-dev \
+	;
+ 
+RUN docker-php-ext-install bz2
+RUN docker-php-ext-install mysqli pdo pdo_mysql
+RUN docker-php-ext-install zip
+RUN docker-php-ext-install gd
+RUN docker-php-ext-install exif
+ 
+RUN apk add --no-cache ${PHPIZE_DEPS} imagemagick imagemagick-dev
+RUN pecl install -o -f imagick\
+    &&  docker-php-ext-enable imagick
+ 
+RUN apk del --no-cache ${PHPIZE_DEPS}
+ 
+# Get latest Composer
+COPY --from=composer:1 /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ 
+WORKDIR /srv/api/admin
+ARG APP_ENV=prod
+ 
+COPY /  ./
+ 
+RUN set -eux; \
+	php -d memory_limit=-1 /usr/bin/composer install --no-dev --prefer-dist --no-scripts --no-progress --no-suggest; \
+	composer clear-cache
+ 
+ 
+COPY .env.example ./.env
+ 
+COPY docker/php/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+RUN chmod +x /usr/local/bin/docker-entrypoint
+ 
+ENTRYPOINT ["docker-entrypoint"]
+CMD ["php-fpm"]
