@@ -26,6 +26,7 @@ class MovieController extends Controller
             'release_year' => 'required|integer|min:1800|max:' . (date('Y') + 5),
             'genre' => 'required|string|max:100',
             'synopsis' => 'nullable|string',
+            'youtube_link' => 'nullable|url|max:255', // Agrega la validación para el enlace de YouTube
         ]);
 
         Movie::create($validated);
@@ -51,6 +52,8 @@ class MovieController extends Controller
             'release_year' => 'required|integer|min:1800|max:' . (date('Y') + 5),
             'genre' => 'required|string|max:100',
             'synopsis' => 'nullable|string',
+            'youtube_link' => 'nullable|url|max:255', // Agrega la validación para el enlace de YouTube
+
         ]);
 
         $movie->update($validated);

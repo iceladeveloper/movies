@@ -15,5 +15,7 @@ class Movie extends Model
         'release_year',
         'genre',
         'synopsis',
+        'youtube_link',
+
     ];
 }

@@ -18,5 +18,12 @@
     <label for="synopsis" class="form-label">Sinopsis</label>
     <textarea class="form-control" id="synopsis" name="synopsis" rows="3">{{ old('synopsis', $movie->synopsis ?? '') }}</textarea>
 </div>
+<div class="mb-3">
+    <label for="youtube_link" class="form-label">Enlace de YouTube (Opcional)</label>
+    <input type="text" class="form-control" id="youtube_link" name="youtube_link" value="{{ old('youtube_link') }}">
+    @error('youtube_link')
+        <div class="alert alert-danger">{{ $message }}</div>
+    @enderror
+</div>
 <button type="submit" class="btn btn-success">{{ $buttonText ?? 'Guardar' }}</button>
 <a href="{{ route('movies.index') }}" class="btn btn-secondary">Cancelar</a>
